@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { PrismaClient } from '@prisma/client';
-import { writeFile } from 'fs/promises';
+import { promises as fs } from 'fs';
 import { join } from 'path';
 import { UPLOAD_DIR } from '$env/static/private';
 
@@ -39,7 +39,7 @@ export async function POST({ request }: RequestEvent) {
 
     // Save file to disk
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
+    await fs.writeFile(filePath, buffer);
 
     // Create resource in database
     const resource = await prisma.resource.create({

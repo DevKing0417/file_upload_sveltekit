@@ -14,9 +14,46 @@
   let category = '';
   let language = '';
   let provider = '';
-  let selectedRoles: string[] = [];
+  let selectedRoles = '';
   let file: FileList | null = null;
   let errors: Record<string, string> = {};
+
+  // Dropdown states
+  let showCategoryDropdown = false;
+  let showLanguageDropdown = false;
+  let showProviderDropdown = false;
+  let showRolesDropdown = false;
+
+  function handleClickOutside(event: MouseEvent, dropdownName: string) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.dropdown-container')) {
+      switch(dropdownName) {
+        case 'category': showCategoryDropdown = false; break;
+        case 'language': showLanguageDropdown = false; break;
+        case 'provider': showProviderDropdown = false; break;
+        case 'roles': showRolesDropdown = false; break;
+      }
+    }
+  }
+
+  function handleKeyDown(event: KeyboardEvent, dropdownName: string) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      switch(dropdownName) {
+        case 'category': showCategoryDropdown = !showCategoryDropdown; break;
+        case 'language': showLanguageDropdown = !showLanguageDropdown; break;
+        case 'provider': showProviderDropdown = !showProviderDropdown; break;
+        case 'roles': showRolesDropdown = !showRolesDropdown; break;
+      }
+    } else if (event.key === 'Escape') {
+      switch(dropdownName) {
+        case 'category': showCategoryDropdown = false; break;
+        case 'language': showLanguageDropdown = false; break;
+        case 'provider': showProviderDropdown = false; break;
+        case 'roles': showRolesDropdown = false; break;
+      }
+    }
+  }
 
   const schema = z.object({
     title: z.string().min(1).max(200),
@@ -67,178 +104,307 @@
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        errors = error.formErrors.fieldErrors;
+        errors = Object.fromEntries(
+          Object.entries(error.formErrors.fieldErrors).map(([key, value]) => [
+            key,
+            value?.[0] || ''
+          ])
+        );
       }
     }
   }
 </script>
 
-<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+<svelte:window on:click={(e) => {
+  if (showCategoryDropdown) handleClickOutside(e, 'category');
+  if (showLanguageDropdown) handleClickOutside(e, 'language');
+  if (showProviderDropdown) handleClickOutside(e, 'provider');
+  if (showRolesDropdown) handleClickOutside(e, 'roles');
+}} />
+
+<div class="fixed inset-0 bg-black bg-opacity-30"></div>
 
 <div class="fixed inset-0 z-10 overflow-y-auto">
-  <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-    <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-      <div class="absolute right-0 top-0 pr-4 pt-4">
+  <div class="flex min-h-full items-center justify-center p-4">
+    <div class="relative w-full max-w-md bg-white rounded-lg shadow-lg">
+      <div class="absolute right-2 top-2">
         <button
           type="button"
-          class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          class="text-gray-400 hover:text-gray-500"
           on:click={() => dispatch('close')}
         >
           <span class="sr-only">Close</span>
-          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
           </svg>
         </button>
       </div>
 
-      <div class="sm:flex sm:items-start">
-        <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-          <h3 class="text-lg font-semibold leading-6 text-gray-900">Upload Resource</h3>
-          <form class="mt-6 space-y-4" on:submit|preventDefault={handleSubmit}>
-            <div>
-              <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+      <div class="p-6">
+        <h2 class="text-xl font-semibold mb-6">Upload Resource</h2>
+        <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+          <div>
+            <input
+              type="text"
+              placeholder="Title*"
+              bind:value={title}
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 {title ? 'text-gray-900' : 'text-gray-400'}"
+            />
+            {#if errors.title}
+              <p class="mt-1 text-xs text-red-600">{errors.title}</p>
+            {/if}
+          </div>
+
+          <div>
+            <textarea
+              placeholder="Description*"
+              bind:value={description}
+              rows="1"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 {description ? 'text-gray-900' : 'text-gray-400'}"
+            ></textarea>
+            {#if errors.description}
+              <p class="mt-1 text-xs text-red-600">{errors.description}</p>
+            {/if}
+          </div>
+
+          <div class="dropdown-container relative">
+            <button
+              type="button"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm cursor-pointer flex justify-between items-center {category ? 'text-gray-900' : 'text-gray-400'}"
+              on:click={() => showCategoryDropdown = !showCategoryDropdown}
+              on:keydown={(e) => handleKeyDown(e, 'category')}
+              aria-haspopup="listbox"
+              aria-expanded={showCategoryDropdown}
+              aria-controls="category-listbox"
+            >
+              <span>{category || "Category*"}</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            {#if showCategoryDropdown}
+              <div 
+                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg"
+                role="listbox"
+                id="category-listbox"
+                aria-label="Categories"
+              >
+                {#each categories as cat}
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 text-left hover:bg-gray-50 cursor-pointer text-sm"
+                    role="option"
+                    aria-selected={category === cat}
+                    on:click={() => {
+                      category = cat;
+                      showCategoryDropdown = false;
+                    }}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        category = cat;
+                        showCategoryDropdown = false;
+                      }
+                    }}
+                  >
+                    {cat}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            {#if errors.category}
+              <p class="mt-1 text-xs text-red-600" role="alert">{errors.category}</p>
+            {/if}
+          </div>
+
+          <div class="dropdown-container relative">
+            <button
+              type="button"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm cursor-pointer flex justify-between items-center {language ? 'text-gray-900' : 'text-gray-400'}"
+              on:click={() => showLanguageDropdown = !showLanguageDropdown}
+              on:keydown={(e) => handleKeyDown(e, 'language')}
+              aria-haspopup="listbox"
+              aria-expanded={showLanguageDropdown}
+              aria-controls="language-listbox"
+            >
+              <span>{language || "Language*"}</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            {#if showLanguageDropdown}
+              <div 
+                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg"
+                role="listbox"
+                id="language-listbox"
+                aria-label="Languages"
+              >
+                {#each languages as lang}
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 text-left hover:bg-gray-50 cursor-pointer text-sm"
+                    role="option"
+                    aria-selected={language === lang}
+                    on:click={() => {
+                      language = lang;
+                      showLanguageDropdown = false;
+                    }}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        language = lang;
+                        showLanguageDropdown = false;
+                      }
+                    }}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            {#if errors.language}
+              <p class="mt-1 text-xs text-red-600" role="alert">{errors.language}</p>
+            {/if}
+          </div>
+
+          <div class="dropdown-container relative">
+            <button
+              type="button"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm cursor-pointer flex justify-between items-center {provider ? 'text-gray-900' : 'text-gray-400'}"
+              on:click={() => showProviderDropdown = !showProviderDropdown}
+              on:keydown={(e) => handleKeyDown(e, 'provider')}
+              aria-haspopup="listbox"
+              aria-expanded={showProviderDropdown}
+              aria-controls="provider-listbox"
+            >
+              <span>{provider || "Provider*"}</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            {#if showProviderDropdown}
+              <div 
+                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg"
+                role="listbox"
+                id="provider-listbox"
+                aria-label="Providers"
+              >
+                {#each providers as prov}
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 text-left hover:bg-gray-50 cursor-pointer text-sm"
+                    role="option"
+                    aria-selected={provider === prov}
+                    on:click={() => {
+                      provider = prov;
+                      showProviderDropdown = false;
+                    }}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        provider = prov;
+                        showProviderDropdown = false;
+                      }
+                    }}
+                  >
+                    {prov}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            {#if errors.provider}
+              <p class="mt-1 text-xs text-red-600" role="alert">{errors.provider}</p>
+            {/if}
+          </div>
+
+          <div class="dropdown-container relative">
+            <button
+              type="button"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm cursor-pointer flex justify-between items-center {selectedRoles ? 'text-gray-900' : 'text-gray-400'}"
+              on:click={() => showRolesDropdown = !showRolesDropdown}
+              on:keydown={(e) => handleKeyDown(e, 'roles')}
+              aria-haspopup="listbox"
+              aria-expanded={showRolesDropdown}
+              aria-controls="roles-listbox"
+            >
+              <span>{selectedRoles || "Role*"}</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            {#if showRolesDropdown}
+              <div 
+                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg"
+                role="listbox"
+                id="roles-listbox"
+                aria-label="Roles"
+              >
+                {#each roles as role}
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 text-left hover:bg-gray-50 cursor-pointer text-sm"
+                    role="option"
+                    aria-selected={selectedRoles === role}
+                    on:click={() => {
+                      selectedRoles = role;
+                      showRolesDropdown = false;
+                    }}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectedRoles = role;
+                        showRolesDropdown = false;
+                      }
+                    }}
+                  >
+                    {role}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            {#if errors.roles}
+              <p class="mt-1 text-xs text-red-600" role="alert">{errors.roles}</p>
+            {/if}
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <div class="flex-grow">
               <input
                 type="text"
-                id="title"
-                bind:value={title}
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                maxlength="200"
+                readonly
+                value={file?.[0]?.name || "No file selected*"}
+                class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-400 bg-white cursor-default"
               />
-              {#if errors.title}
-                <p class="mt-1 text-sm text-red-600">{errors.title}</p>
-              {/if}
             </div>
-
             <div>
-              <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-              <textarea
-                id="description"
-                bind:value={description}
-                rows="3"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                maxlength="1000"
+              <input
+                type="file"
+                id="file-upload"
+                bind:files={file}
+                class="hidden"
               />
-              {#if errors.description}
-                <p class="mt-1 text-sm text-red-600">{errors.description}</p>
-              {/if}
-            </div>
-
-            <div>
-              <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
-              <select
-                id="category"
-                bind:value={category}
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-              >
-                <option value="">Select a category</option>
-                {#each categories as cat}
-                  <option value={cat}>{cat}</option>
-                {/each}
-              </select>
-              {#if errors.category}
-                <p class="mt-1 text-sm text-red-600">{errors.category}</p>
-              {/if}
-            </div>
-
-            <div>
-              <label for="language" class="block text-sm font-medium text-gray-700">Language</label>
-              <select
-                id="language"
-                bind:value={language}
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-              >
-                <option value="">Select a language</option>
-                {#each languages as lang}
-                  <option value={lang}>{lang.toUpperCase()}</option>
-                {/each}
-              </select>
-              {#if errors.language}
-                <p class="mt-1 text-sm text-red-600">{errors.language}</p>
-              {/if}
-            </div>
-
-            <div>
-              <label for="provider" class="block text-sm font-medium text-gray-700">Provider</label>
-              <select
-                id="provider"
-                bind:value={provider}
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-              >
-                <option value="">Select a provider</option>
-                {#each providers as prov}
-                  <option value={prov}>{prov}</option>
-                {/each}
-              </select>
-              {#if errors.provider}
-                <p class="mt-1 text-sm text-red-600">{errors.provider}</p>
-              {/if}
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Roles</label>
-              <div class="mt-2 space-y-2">
-                {#each roles as role}
-                  <div class="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={role}
-                      value={role}
-                      bind:group={selectedRoles}
-                      class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <label for={role} class="ml-2 text-sm text-gray-700">{role}</label>
-                  </div>
-                {/each}
-              </div>
-              {#if errors.roles}
-                <p class="mt-1 text-sm text-red-600">{errors.roles}</p>
-              {/if}
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700">File</label>
-              <div class="mt-1 flex justify-center rounded-md border-2 border-dashed border-gray-300 px-6 pt-5 pb-6">
-                <div class="space-y-1 text-center">
-                  <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <div class="flex text-sm text-gray-600">
-                    <label for="file-upload" class="relative cursor-pointer rounded-md bg-white font-medium text-primary hover:text-primary-hover focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-                      <span>Upload a file</span>
-                      <input
-                        id="file-upload"
-                        type="file"
-                        bind:files={file}
-                        class="sr-only"
-                      />
-                    </label>
-                    <p class="pl-1">or drag and drop</p>
-                  </div>
-                  <p class="text-xs text-gray-500">PDF, TXT, Video, or Slides up to 10MB</p>
-                </div>
-              </div>
-              {#if errors.file}
-                <p class="mt-1 text-sm text-red-600">{errors.file}</p>
-              {/if}
-            </div>
-
-            <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-              <button
-                type="submit"
-                class="inline-flex w-full justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                Upload
-              </button>
               <button
                 type="button"
-                class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
-                on:click={() => dispatch('close')}
+                class="px-4 py-2 text-sm border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50"
+                on:click={() => document.getElementById('file-upload')?.click()}
               >
-                Cancel
+                Select file
               </button>
             </div>
-          </form>
-        </div>
+            {#if errors.file}
+              <p class="mt-1 text-xs text-red-600">{errors.file}</p>
+            {/if}
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <button
+              type="submit"
+              class="px-4 py-2 bg-orange-500 text-white rounded-md text-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            >
+              Upload
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
