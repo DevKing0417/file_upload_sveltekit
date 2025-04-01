@@ -14,7 +14,7 @@
   let category = '';
   let language = '';
   let provider = '';
-  let selectedRoles = '';
+  let role = '';
   let file: FileList | null = null;
   let errors: Record<string, string> = {};
 
@@ -31,7 +31,7 @@
         case 'category': showCategoryDropdown = false; break;
         case 'language': showLanguageDropdown = false; break;
         case 'provider': showProviderDropdown = false; break;
-        case 'roles': showRolesDropdown = false; break;
+        case 'role': showRolesDropdown = false; break;
       }
     }
   }
@@ -43,14 +43,14 @@
         case 'category': showCategoryDropdown = !showCategoryDropdown; break;
         case 'language': showLanguageDropdown = !showLanguageDropdown; break;
         case 'provider': showProviderDropdown = !showProviderDropdown; break;
-        case 'roles': showRolesDropdown = !showRolesDropdown; break;
+        case 'role': showRolesDropdown = !showRolesDropdown; break;
       }
     } else if (event.key === 'Escape') {
       switch(dropdownName) {
         case 'category': showCategoryDropdown = false; break;
         case 'language': showLanguageDropdown = false; break;
         case 'provider': showProviderDropdown = false; break;
-        case 'roles': showRolesDropdown = false; break;
+        case 'role': showRolesDropdown = false; break;
       }
     }
   }
@@ -61,8 +61,17 @@
     category: z.string().min(1),
     language: z.string().min(1),
     provider: z.string().min(1),
-    roles: z.array(z.string()).min(1),
+    role: z.string().optional(),
     file: z.instanceof(FileList).refine((files) => files.length > 0, 'File is required')
+      .refine((files) => {
+        const file = files[0];
+        const validTypes = [
+          'video/mp4', 'video/quicktime', 'video/x-msvideo',
+          'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        ];
+        return validTypes.includes(file.type);
+      }, 'Only Videos, Documents, and Slide files are allowed')
   });
 
   async function handleSubmit() {
@@ -74,23 +83,20 @@
         category,
         language,
         provider,
-        roles: selectedRoles,
+        role,
         file
       };
-
       schema.parse(data);
       errors = {};
-
       formData.append('title', title);
       formData.append('description', description);
       formData.append('category', category);
       formData.append('language', language);
       formData.append('provider', provider);
-      formData.append('roles', JSON.stringify(selectedRoles));
+      formData.append('role', role);
       if (file?.[0]) {
         formData.append('file', file[0]);
       }
-
       const response = await fetch('/api/resources', {
         method: 'POST',
         body: formData
@@ -99,8 +105,17 @@
       if (response.ok) {
         dispatch('success');
       } else {
-        const error = await response.json();
-        throw new Error(error.message);
+        const errorData = await response.json();
+        if (response.status === 409) {
+          // Handle duplicate error
+          errors = {
+            ...errors,
+            duplicate: errorData.message
+          };
+          throw new Error(errorData.message);
+        } else {
+          throw new Error(errorData.message || 'Error uploading resource');
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -110,6 +125,9 @@
             value?.[0] || ''
           ])
         );
+      } else {
+        // Display error at the top of the form
+        errors.duplicate = error instanceof Error ? error.message : 'An unknown error occurred';
       }
     }
   }
@@ -119,14 +137,14 @@
   if (showCategoryDropdown) handleClickOutside(e, 'category');
   if (showLanguageDropdown) handleClickOutside(e, 'language');
   if (showProviderDropdown) handleClickOutside(e, 'provider');
-  if (showRolesDropdown) handleClickOutside(e, 'roles');
+  if (showRolesDropdown) handleClickOutside(e, 'role');
 }} />
 
 <div class="fixed inset-0 bg-black bg-opacity-30"></div>
 
 <div class="fixed inset-0 z-10 overflow-y-auto">
   <div class="flex min-h-full items-center justify-center p-4">
-    <div class="relative w-full max-w-md bg-white rounded-lg shadow-lg">
+    <div class="relative w-full max-w-md bg-white rounded-lg shadow-lg mx-4 sm:mx-0">
       <div class="absolute right-2 top-2">
         <button
           type="button"
@@ -140,9 +158,14 @@
         </button>
       </div>
 
-      <div class="p-6">
-        <h2 class="text-xl font-semibold mb-6">Upload Resource</h2>
+      <div class="p-4 sm:p-6">
+        <h2 class="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Upload Resource</h2>
         <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+          {#if errors.duplicate}
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p class="text-sm text-red-600">{errors.duplicate}</p>
+            </div>
+          {/if}
           <div>
             <input
               type="text"
@@ -320,14 +343,14 @@
           <div class="dropdown-container relative">
             <button
               type="button"
-              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm cursor-pointer flex justify-between items-center {selectedRoles ? 'text-gray-900' : 'text-gray-400'}"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm cursor-pointer flex justify-between items-center {role ? 'text-gray-900' : 'text-gray-400'}"
               on:click={() => showRolesDropdown = !showRolesDropdown}
-              on:keydown={(e) => handleKeyDown(e, 'roles')}
+              on:keydown={(e) => handleKeyDown(e, 'role')}
               aria-haspopup="listbox"
               aria-expanded={showRolesDropdown}
               aria-controls="roles-listbox"
             >
-              <span>{selectedRoles || "Role*"}</span>
+              <span>{role || "Role"}</span>
               <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
               </svg>
@@ -339,31 +362,31 @@
                 id="roles-listbox"
                 aria-label="Roles"
               >
-                {#each roles as role}
+                {#each roles as role_list}
                   <button
                     type="button"
                     class="w-full px-3 py-2 text-left hover:bg-gray-50 cursor-pointer text-sm"
                     role="option"
-                    aria-selected={selectedRoles === role}
+                    aria-selected={role === role_list}
                     on:click={() => {
-                      selectedRoles = role;
+                      role = role_list;
                       showRolesDropdown = false;
                     }}
                     on:keydown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        selectedRoles = role;
+                        role = role_list;
                         showRolesDropdown = false;
                       }
                     }}
                   >
-                    {role}
+                    {role_list}
                   </button>
                 {/each}
               </div>
             {/if}
-            {#if errors.roles}
-              <p class="mt-1 text-xs text-red-600" role="alert">{errors.roles}</p>
+            {#if errors.role}
+              <p class="mt-1 text-xs text-red-600" role="alert">{errors.role}</p>
             {/if}
           </div>
 
@@ -381,6 +404,7 @@
                 type="file"
                 id="file-upload"
                 bind:files={file}
+                accept=".mp4,.mov,.avi,.pdf,.doc,.docx,.ppt,.pptx"
                 class="hidden"
               />
               <button

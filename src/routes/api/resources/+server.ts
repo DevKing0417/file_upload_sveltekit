@@ -26,11 +26,35 @@ export async function POST({ request }: RequestEvent) {
     const category = formData.get('category') as string;
     const language = formData.get('language') as string;
     const provider = formData.get('provider') as string;
-    const roles = JSON.parse(formData.get('roles') as string) as string[];
+    const role = formData.get('role') as string;
     const file = formData.get('file') as File;
-
+    
     if (!file) {
       return json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    // Check for duplicate title
+    const existingResourceByTitle = await prisma.resource.findFirst({
+      where: { title: { equals: title, mode: 'insensitive' } }
+    });
+
+    if (existingResourceByTitle) {
+      return json({ 
+        error: 'Duplicate', 
+        message: 'A resource with this title already exists.' 
+      }, { status: 409 });
+    }
+
+    // Check for duplicate file
+    const existingResourceByFileName = await prisma.resource.findFirst({
+      where: { fileName: { equals: file.name, mode: 'insensitive' } }
+    });
+
+    if (existingResourceByFileName) {
+      return json({ 
+        error: 'Duplicate', 
+        message: 'A file with this name already exists.' 
+      }, { status: 409 });
     }
 
     const fileName = file.name;
@@ -49,7 +73,7 @@ export async function POST({ request }: RequestEvent) {
         category,
         language,
         provider,
-        roles,
+        role,
         fileName,
         fileType,
         filePath,

@@ -1,38 +1,108 @@
-# sv
+# Pack - Resource Management System
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A modern web application built with SvelteKit for managing resources, users, programs, and events.
 
-## Creating a project
+## Prerequisites
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Node.js (v18.0.0 or higher)
+- npm or pnpm (we recommend pnpm for faster installation)
+- PostgreSQL (v14 or higher)
 
+## Getting Started
+
+
+1. Install dependencies:
 ```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+pnpm install
+# or if using npm
+npm install
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
+2. Set up your environment variables:
 ```bash
+# Create a .env file in the root directory
+cp .env.example .env
+
+# Update the following variables in .env:
+DATABASE_URL="postgresql://username:password@localhost:5432/pack_db"
+```
+
+3. Set up the database:
+```bash
+# Create and apply migrations
+pnpm prisma migrate dev
+# or
+npx prisma migrate dev
+```
+
+4. Start the development server:
+```bash
+pnpm dev
+# or
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+The application will be available at `http://localhost:5173`
 
-To create a production version of your app:
+## Project Structure
+
+```
+my-svelte-app/
+├── src/
+│   ├── lib/             # Shared components and utilities
+│   ├── routes/          # SvelteKit routes and API endpoints
+│   └── app.css         # Global styles
+├── static/             # Static assets
+├── prisma/            # Database schema and migrations
+├── .env.example        # Example environment variables
+├── .env                # Environment variables
+├── package.json        # Project metadata and dependencies
+└── README.md           # Project documentation
+```
+
+## Development Guidelines
+
+### Code Style
+
+- Use TypeScript for type safety
+- Follow SvelteKit's file-based routing conventions
+- Use Tailwind CSS for styling
+- Implement responsive design patterns
+
+### Database
+
+- Use Prisma as the ORM
+- Create migrations for all database changes
+- Follow naming conventions for tables and columns
+
+### API Endpoints
+
+All API endpoints are located in `src/routes/api/` following SvelteKit's routing conventions:
+
+- GET `/api/resources` - List all resources
+- POST `/api/resources` - Create a new resource
+- GET `/api/resources/[id]` - Get a specific resource
+
+## Testing
 
 ```bash
-npm run build
+# Run tests
+pnpm test
+# or
+npm run test
 ```
 
-You can preview the production build with `npm run preview`.
+## Building for Production
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```bash
+# Build the application
+pnpm build
+# or
+npm run build
+
+# Preview the production build
+pnpm preview
+# or
+npm run preview
+```
+

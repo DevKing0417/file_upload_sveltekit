@@ -14,7 +14,7 @@ model Resource {
   category    String
   language    String
   provider    String
-  roles       String[]
+  role        String
   filePath    String
   fileName    String
   fileType    String
